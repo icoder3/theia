@@ -73,8 +73,8 @@ export class FileSystemFrontendContribution implements FrontendApplicationContri
     initialize(): void {
         this.fileSystemWatcher.onFilesChanged(event => this.run(() => this.updateWidgets(event)));
         this.fileSystemWatcher.onWillMove(event => event.waitUntil(this.runEach((uri, widget) => this.pushMove(uri, widget, event))));
-        this.fileSystemWatcher.onDidFailMove(event => event.waitUntil(this.runEach((uri, widget) => this.revertMove(uri, widget, event))));
-        this.fileSystemWatcher.onDidMove(event => event.waitUntil(this.runEach((uri, widget) => this.applyMove(uri, widget, event))));
+        this.fileSystemWatcher.onDidFailMove(event => this.runEach((uri, widget) => this.revertMove(uri, widget, event)));
+        this.fileSystemWatcher.onDidMove(event => this.runEach((uri, widget) => this.applyMove(uri, widget, event)));
     }
 
     onStart?(app: FrontendApplication): MaybePromise<void> {

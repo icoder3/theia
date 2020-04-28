@@ -96,7 +96,7 @@ export class InPluginFileSystemWatcherManager {
     }
 
     private uriMatches(subscriber: FileWatcherSubscriber, fileChange: FileChange): boolean {
-        return subscriber.mather(fileChange.uri.path.toString());
+        return subscriber.matcher(fileChange.uri.path.toString());
     }
 
     /**
@@ -118,7 +118,7 @@ export class InPluginFileSystemWatcherManager {
 
         const subscriber: FileWatcherSubscriber = {
             id: subscriberId,
-            mather: globPatternMatcher,
+            matcher: globPatternMatcher,
             ignoreCreateEvents: options.ignoreCreateEvents === true,
             ignoreChangeEvents: options.ignoreChangeEvents === true,
             ignoreDeleteEvents: options.ignoreDeleteEvents === true,
@@ -141,7 +141,7 @@ export class InPluginFileSystemWatcherManager {
 
 interface FileWatcherSubscriber {
     id: string;
-    mather: ParsedPattern;
+    matcher: ParsedPattern;
     ignoreCreateEvents: boolean;
     ignoreChangeEvents: boolean;
     ignoreDeleteEvents: boolean;

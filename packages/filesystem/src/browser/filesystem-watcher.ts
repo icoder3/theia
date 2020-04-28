@@ -67,7 +67,7 @@ export namespace FileChangeEvent {
     }
 }
 
-export interface FileMoveEvent extends WaitUntilEvent {
+export interface FileMoveEvent {
     sourceUri: URI
     targetUri: URI
 }
@@ -77,13 +77,14 @@ export namespace FileMoveEvent {
     }
 }
 
-export interface FileEvent extends WaitUntilEvent {
+export interface FileEvent {
     uri: URI
 }
 
-export class FileOperationEmitter<E extends WaitUntilEvent> implements Disposable {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class FileOperationEmitter<E extends object, V = any> implements Disposable {
 
-    protected readonly onWillEmitter = new Emitter<E>();
+    protected readonly onWillEmitter = new Emitter<E & WaitUntilEvent<V>>();
     readonly onWill = this.onWillEmitter.event;
 
     protected readonly onDidFailEmitter = new Emitter<E>();
@@ -102,17 +103,25 @@ export class FileOperationEmitter<E extends WaitUntilEvent> implements Disposabl
         this.toDispose.dispose();
     }
 
-    async fireWill(event: Pick<E, Exclude<keyof E, 'waitUntil'>>): Promise<void> {
-        await WaitUntilEvent.fire(this.onWillEmitter, event);
+    async fireWill(event: Omit<E, 'waitUntil'>): Promise<V[]> {
+        return WaitUntilEvent.fire(this.onWillEmitter, event);
     }
 
-    async fireDid(failed: boolean, event: Pick<E, Exclude<keyof E, 'waitUntil'>>): Promise<void> {
+    fireDid(failed: boolean, event: E): void {
         const onDidEmitter = failed ? this.onDidFailEmitter : this.onDidEmitter;
-        await WaitUntilEvent.fire(onDidEmitter, event);
+        onDidEmitter.fire(event);
     }
 
 }
 
+/**
+ * React to file system events, including calls originating from the
+ * application or event coming from the system's filesystem directly
+ * (actual file watching).
+ *
+ * `on(will|did)(create|rename|delete)` events solely come from application
+ * usage, not from actual filesystem.
+ */
 @injectable()
 export class FileSystemWatcher implements Disposable {
 
@@ -121,6 +130,11 @@ export class FileSystemWatcher implements Disposable {
 
     protected readonly onFileChangedEmitter = new Emitter<FileChangeEvent>();
     readonly onFilesChanged = this.onFileChangedEmitter.event;
+
+    protected readonly fileCreateEmitter = new FileOperationEmitter<FileEvent>();
+    readonly onWillCreate = this.fileCreateEmitter.onWill;
+    readonly onDidFailCreate = this.fileCreateEmitter.onDidFail;
+    readonly onDidCreate = this.fileCreateEmitter.onDid;
 
     protected readonly fileDeleteEmitter = new FileOperationEmitter<FileEvent>();
     readonly onWillDelete = this.fileDeleteEmitter.onWill;
@@ -164,11 +178,15 @@ export class FileSystemWatcher implements Disposable {
         }));
 
         this.filesystem.setClient({
+            /* eslint-disable no-void */
             shouldOverwrite: this.shouldOverwrite.bind(this),
-            willDelete: uri => this.fileDeleteEmitter.fireWill({ uri: new URI(uri) }),
-            didDelete: (uri, failed) => this.fileDeleteEmitter.fireDid(failed, { uri: new URI(uri) }),
-            willMove: (source, target) => this.fileMoveEmitter.fireWill({ sourceUri: new URI(source), targetUri: new URI(target) }),
-            didMove: (source, target, failed) => this.fileMoveEmitter.fireDid(failed, { sourceUri: new URI(source), targetUri: new URI(target) })
+            willCreate: async uri => void await this.fileCreateEmitter.fireWill({ uri: new URI(uri) }),
+            didCreate: async (uri, failed) => void this.fileCreateEmitter.fireDid(failed, { uri: new URI(uri) }),
+            willDelete: async uri => void await this.fileDeleteEmitter.fireWill({ uri: new URI(uri) }),
+            didDelete: async (uri, failed) => void this.fileDeleteEmitter.fireDid(failed, { uri: new URI(uri) }),
+            willMove: async (sourceUri, targetUri) => void await this.fileMoveEmitter.fireWill({ sourceUri: new URI(sourceUri), targetUri: new URI(targetUri) }),
+            didMove: async (sourceUri, targetUri, failed) => this.fileMoveEmitter.fireDid(false, { sourceUri: new URI(sourceUri), targetUri: new URI(targetUri) }),
+            /* eslint-enable no-void */
         });
     }
 
@@ -228,4 +246,3 @@ export class FileSystemWatcher implements Disposable {
     }
 
 }
-

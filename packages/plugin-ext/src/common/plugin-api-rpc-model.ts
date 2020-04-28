@@ -547,3 +547,15 @@ export interface CallHierarchyOutgoingCall {
     to: CallHierarchyItem;
     fromRanges: Range[];
 }
+
+export interface CreateFilesEventDTO {
+    files: UriComponents[]
+}
+
+export interface RenameFilesEventDTO {
+    files: { oldUri: UriComponents, newUri: UriComponents }[]
+}
+
+export interface DeleteFilesEventDTO {
+    files: UriComponents[]
+}
