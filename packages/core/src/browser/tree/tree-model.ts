@@ -147,6 +147,7 @@ export class TreeModelImpl implements TreeModel, SelectionProvider<ReadonlyArray
     @inject(TreeSearch) protected readonly treeSearch: TreeSearch;
 
     protected readonly onChangedEmitter = new Emitter<void>();
+    protected readonly onNodesAddedEmitter = new Emitter<TreeNode[]>();
     protected readonly onOpenNodeEmitter = new Emitter<TreeNode>();
     protected readonly toDispose = new DisposableCollection();
 
@@ -154,6 +155,7 @@ export class TreeModelImpl implements TreeModel, SelectionProvider<ReadonlyArray
     protected init(): void {
         this.toDispose.push(this.tree);
         this.toDispose.push(this.tree.onChanged(() => this.fireChanged()));
+        this.toDispose.push(this.tree.onNodesAdded(nodes => this.onNodesAddedEmitter.fire(nodes)));
 
         this.toDispose.push(this.selectionService);
 
@@ -197,6 +199,10 @@ export class TreeModelImpl implements TreeModel, SelectionProvider<ReadonlyArray
 
     get onChanged(): Event<void> {
         return this.onChangedEmitter.event;
+    }
+
+    get onNodesAdded(): Event<TreeNode[]> {
+        return this.onNodesAddedEmitter.event;
     }
 
     get onOpenNode(): Event<TreeNode> {
