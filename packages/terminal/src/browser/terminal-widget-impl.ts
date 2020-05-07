@@ -317,16 +317,21 @@ export class TerminalWidgetImpl extends TerminalWidget implements StatefulWidget
 
     storeState(): object {
         this.closeOnDispose = false;
+        console.error('!!!!!!!!!!!!!!!! STORE !!!  ', this.closeOnDispose);
         return { terminalId: this.terminalId, titleLabel: this.title.label };
     }
 
     restoreState(oldState: object): void {
+        console.error('!!!!!!!!!!!!!!!! RESTORE !!!  ', this.closeOnDispose);
         if (this.restored === false) {
+            console.error('!!! RESTORE !!!  ', this.closeOnDispose);
             const state = oldState as { terminalId: number, titleLabel: string };
             /* This is a workaround to issue #879 */
             this.restored = true;
             this.title.label = state.titleLabel;
             this.start(state.terminalId);
+        } else {
+            console.error('!!! RESTORE !!!  this.restored === false', this.closeOnDispose);
         }
     }
 
