@@ -35,6 +35,7 @@ import { WorkspaceCompareHandler } from './workspace-compare-handler';
 import { FileDownloadCommands } from '@theia/filesystem/lib/browser/download/file-download-command-contribution';
 import { FileSystemCommands } from '@theia/filesystem/lib/browser/filesystem-frontend-contribution';
 import { WorkspaceInputDialog } from './workspace-input-dialog';
+import { CommandEvents } from './command-events';
 
 const validFilename: (arg: string) => boolean = require('valid-filename');
 
@@ -184,6 +185,7 @@ export class WorkspaceCommandContribution implements CommandContribution {
     @inject(WorkspaceDeleteHandler) protected readonly deleteHandler: WorkspaceDeleteHandler;
     @inject(WorkspaceDuplicateHandler) protected readonly duplicateHandler: WorkspaceDuplicateHandler;
     @inject(WorkspaceCompareHandler) protected readonly compareHandler: WorkspaceCompareHandler;
+    @inject(CommandEvents) protected readonly commandEvents: CommandEvents;
 
     registerCommands(registry: CommandRegistry): void {
         this.openerService.getOpeners().then(openers => {
@@ -213,8 +215,9 @@ export class WorkspaceCommandContribution implements CommandContribution {
                     dialog.open().then(name => {
                         if (name) {
                             const fileUri = parentUri.resolve(name);
-                            this.fileSystem.createFile(fileUri.toString()).then(() => {
-                                open(this.openerService, fileUri);
+                            this.fileSystem.createFile(fileUri.toString()).then(async () => {
+                                this.commandEvents.fireNewFileCommand(fileUri);
+                                await open(this.openerService, fileUri);
                             });
                         }
                     });
@@ -222,7 +225,7 @@ export class WorkspaceCommandContribution implements CommandContribution {
             })
         }));
         registry.registerCommand(WorkspaceCommands.NEW_FOLDER, this.newWorkspaceRootUriAwareCommandHandler({
-            execute: uri => this.getDirectory(uri).then(parent => {
+            execute: uri => this.getDirectory(uri).then(async parent => {
                 if (parent) {
                     const parentUri = new URI(parent.uri);
                     const vacantChildUri = FileSystemUtils.generateUniqueResourceURI(parentUri, parent, 'Untitled');
@@ -232,9 +235,11 @@ export class WorkspaceCommandContribution implements CommandContribution {
                         initialValue: vacantChildUri.path.base,
                         validate: name => this.validateFileName(name, parent, true)
                     }, this.labelProvider);
-                    dialog.open().then(name => {
+                    await dialog.open().then(async name => {
                         if (name) {
-                            this.fileSystem.createFolder(parentUri.resolve(name).toString());
+                            const folderUri = parentUri.resolve(name);
+                            this.commandEvents.fireNewFileCommand(folderUri);
+                            await this.fileSystem.createFolder(parentUri.resolve(name).toString());
                         }
                     });
                 }

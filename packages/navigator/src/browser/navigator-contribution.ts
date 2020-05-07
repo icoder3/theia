@@ -55,8 +55,8 @@ import {
 import { FileSystemCommands } from '@theia/filesystem/lib/browser/filesystem-frontend-contribution';
 import { NavigatorDiff, NavigatorDiffCommands } from './navigator-diff';
 import { UriSelection } from '@theia/core/lib/common/selection';
-import { FileChangeType, FileSystemWatcher } from '@theia/filesystem/lib/browser';
-import { DirNode } from '@theia/filesystem/lib/browser/file-tree/file-tree';
+import { FileChangeType, FileStatNode, FileSystemWatcher } from '@theia/filesystem/lib/browser';
+import { CommandEvents } from '@theia/workspace/lib/browser/command-events';
 
 export namespace FileNavigatorCommands {
     export const REVEAL_IN_NAVIGATOR: Command = {
@@ -154,6 +154,9 @@ export class FileNavigatorContribution extends AbstractViewContribution<FileNavi
     @inject(FileSystemWatcher)
     protected readonly watcher: FileSystemWatcher;
 
+    @inject(CommandEvents)
+    protected readonly commandEvents: CommandEvents;
+
     constructor(
         @inject(FileNavigatorPreferences) protected readonly fileNavigatorPreferences: FileNavigatorPreferences,
         @inject(OpenerService) protected readonly openerService: OpenerService,
@@ -188,11 +191,18 @@ export class FileNavigatorContribution extends AbstractViewContribution<FileNavi
         this.shell.activeChanged.connect(updateFocusContextKeys);
         const widget = await this.widget;
         const model = widget.model;
+        let addedResourceUri: string | undefined;
+        this.commandEvents.onNewFileCommand(uri => {
+            addedResourceUri = uri.toString();
+        });
+        this.commandEvents.onNewFolderCommand(uri => {
+            addedResourceUri = uri.toString();
+        });
         model.onNodesAdded(async nodes => {
             // Select created new file or folder.
             const node = nodes[0];
-            if (nodes.length === 1 && SelectableTreeNode.is(node)
-                && (this.fileNavigatorPreferences['explorer.autoReveal'] ? true : DirNode.is(node))) {
+            if (nodes.length === 1 && SelectableTreeNode.is(node) && FileStatNode.is(node) && node.fileStat.uri.toString() === addedResourceUri) {
+                addedResourceUri = undefined;
                 model.selectNode(node);
             }
         });
@@ -201,7 +211,7 @@ export class FileNavigatorContribution extends AbstractViewContribution<FileNavi
             const change = changes[0];
             if (changes.length === 1 && change.type === FileChangeType.ADDED) {
                 const node = model.getNodesByUri(change.uri.parent).next().value;
-                if (ExpandableTreeNode.is(node) && !node.expanded) {
+                if (change.uri.toString() === addedResourceUri && ExpandableTreeNode.is(node) && !node.expanded) {
                     model.expandNode(node);
                 }
             }
