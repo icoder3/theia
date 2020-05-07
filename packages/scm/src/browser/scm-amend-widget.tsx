@@ -14,8 +14,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { injectable, inject } from 'inversify';
-import { Message } from '@phosphor/messaging';
+import { injectable, inject, postConstruct } from 'inversify';
 import { SelectionService } from '@theia/core/lib/common';
 import * as React from 'react';
 import {
@@ -51,11 +50,11 @@ export class ScmAmendWidget extends ReactWidget {
         this.id = ScmAmendWidget.ID;
     }
 
-    protected onUpdateRequest(msg: Message): void {
-        if (!this.isAttached || !this.isVisible) {
-            return;
-        }
-        super.onUpdateRequest(msg);
+    @postConstruct()
+    protected init(): void {
+        this.toDispose.push(this.scmService.onDidChangeSelectedRepository(() => {
+            this.update();
+        }));
     }
 
     protected render(): React.ReactNode {
