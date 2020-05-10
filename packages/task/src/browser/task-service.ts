@@ -468,6 +468,7 @@ export class TaskService implements TaskConfigurationClient {
         let task: TaskConfiguration | undefined;
         const startRun = new Date().valueOf();
         console.error('+++++++++++++++++++++++++++++++++  TASK service !!! RUN 1 ', startRun);
+        console.error('++++  TASK service !!! RUN config ', source, taskLabel, scope);
 
         task = this.taskConfigurations.getTask(source, taskLabel);
         if (!task) { // if a configured task cannot be found, search from detected tasks
